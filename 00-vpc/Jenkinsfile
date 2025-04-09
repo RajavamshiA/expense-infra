@@ -22,21 +22,22 @@ pipeline {
             }
         }
         }
-        // stage('Plan'){
-        //     steps{
-        //         withAWS(region: 'us-east-1', credentials:'aws-creds'){
-        //             sh 'cd 00-vpc'
-        //             sh 'terraform plan -out=tfplan'
-        //         }
-        //     }
-        // }
-        stage('Deploy'){
-            when {
-                expression { env.GIT_BRANCH != "origin/main"}
-            }
+       
+        stage('Apply or Deploy'){
             steps{
-                sh 'echo This is Deploy'
+                withAWS(region: 'us-east-1', credentials:'aws-creds'){
+                    sh """
+                        cd 00-vpc
+                        if [ ${params.ACTION} == 'apply' ]
+                        then
+                            terraform apply -auto-approve tfplan
+                        elif [ ${params.ACTION} == 'destroy' ]
+                        then 
+                            terraform destroy -auto-approve tfplan
+                        fi
+                    """
             }
+         }
         }
         stage('Print Params'){
             steps{
