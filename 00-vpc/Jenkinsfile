@@ -16,19 +16,20 @@ pipeline {
                 withAWS(region: 'us-east-1', credentials:'aws-creds'){
                     sh """
                         cd 00-vpc
-                        terraform init -reconfigure
+                        terraform init -reconfigure 
                         terraform plan -out=tfplan
                     """
             }
         }
-        stage('Plan'){
-            steps{
-                withAWS(region: 'us-east-1', credentials:'aws-creds'){
-                    sh 'cd 00-vpc'
-                    sh 'terraform plan -out=tfplan'
-                }
-            }
         }
+        // stage('Plan'){
+        //     steps{
+        //         withAWS(region: 'us-east-1', credentials:'aws-creds'){
+        //             sh 'cd 00-vpc'
+        //             sh 'terraform plan -out=tfplan'
+        //         }
+        //     }
+        // }
         stage('Deploy'){
             when {
                 expression { env.GIT_BRANCH != "origin/main"}
