@@ -24,12 +24,12 @@ pipeline {
         }
        
         stage('Apply or Deploy'){
-            steps{
-                withAWS(region: 'us-east-1', credentials:'aws-creds'){
-                    input {
+            input {
                         message "Should we continue to ${params.ACTION}"
                         ok "Yes, we should."
                     }
+            steps{
+                withAWS(region: 'us-east-1', credentials:'aws-creds'){
                     sh """
                         cd 00-vpc
                         if [ ${params.ACTION} == 'apply' ]
