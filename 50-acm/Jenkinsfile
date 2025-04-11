@@ -7,67 +7,58 @@ pipeline {
         disableConcurrentBuilds()
         ansiColor('xterm')
     }
-     parameters {
-        choice(name: 'ACTION', choices: ['apply','destroy'], description: 'Select Action')
-                }
+    // environment {
+    //     DEBUG = 'true'
+    // }
+
+    parameters {
+        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Select Action')
+    }
     stages {
-        stage('Init and Plan'){
-            steps{
-                withAWS(region: 'us-east-1', credentials:'aws-creds'){
+        stage('Init and Plan') {
+            steps {
+                withAWS(region: 'us-east-1', credentials: 'aws-creds') {
                     sh """
-                        cd 00-vpc
-                        terraform init -reconfigure 
+                        cd 50-acm
+                        terraform init -reconfigure
                         terraform plan -out=tfplan
                     """
+                }
             }
         }
-        }
-       
-        stage('Apply or Deploy'){ 
-            steps{
-                withAWS(region: 'us-east-1', credentials:'aws-creds'){
+
+        stage('Apply or Destroy') {
+            /* input {
+                message "Should we continue to ${params.ACTION}"
+                ok "Yes, we should."
+            } */
+            steps {
+                withAWS(region: 'us-east-1', credentials: 'aws-creds') {
                     sh """
-                        cd 00-vpc
+                        cd 50-acm
                         if [ ${params.ACTION} == 'apply' ]
                         then
                             terraform apply -auto-approve tfplan
                         elif [ ${params.ACTION} == 'destroy' ]
-                        then 
-                            terraform destroy -auto-approve 
+                        then
+                            terraform destroy -auto-approve
                         fi
                     """
-            }
-         }
-        }
-        stage('Print Params'){
-            steps{
-                echo "Hello ${params.PERSON}"
-                echo "Biography: ${params.BIOGRAPHY}"
-                echo "Toggle: ${params.TOGGLE}"
-                echo "Choice: ${params.CHOICE}"
-                echo "Password: ${params.PASSWORD}"  
+                }
             }
         }
-        stage('Trigger SG'){
-            when{
-                expression { params.ACTION == 'apply' }
-            }
-            steps{
-                build job: '10-sg', parameters: [string(name: 'ACTION', value: 'apply')], wait: false
-            }
-      } 
     }
+
     post {
-     always{
-        echo "This section runs always"
-        deleteDir() 
-     }
-     success{
-        echo "This section runs when pipleline success"
-     }
-     failure{
-        echo "This section runs when pipleline failure"
-     }
+        always{
+            echo "This sections runs always"
+            deleteDir()
+        }
+        success{
+            echo "This section run when pipeline success"
+        }
+        failure{
+            echo "This section run when pipeline failure"
+        }
     }
 }
-
