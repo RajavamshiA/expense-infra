@@ -15,7 +15,7 @@ pipeline {
             steps{
                 withAWS(region: 'us-east-1', credentials:'aws-creds'){
                     sh """
-                        cd 00-vpc
+                        cd 10-sg
                         terraform init -reconfigure 
                         terraform plan -out=tfplan
                     """
@@ -23,11 +23,11 @@ pipeline {
         }
         }
        
-        stage('Apply or Deploy'){ 
+        stage('Apply or Deploy'){
             steps{
                 withAWS(region: 'us-east-1', credentials:'aws-creds'){
                     sh """
-                        cd 00-vpc
+                        cd 10-sg
                         if [ ${params.ACTION} == 'apply' ]
                         then
                             terraform apply -auto-approve tfplan
@@ -48,14 +48,48 @@ pipeline {
                 echo "Password: ${params.PASSWORD}"  
             }
         }
-        stage('Trigger SG'){
+        stage('Destroy VPC'){
             when{
-                expression { params.ACTION == 'apply' }
+                expression { params.ACTION == 'destroy' }
             }
             steps{
-                build job: '10-sg', parameters: [string(name: 'ACTION', value: 'apply')], wait: false
+                build job: '00-vpc', parameters: [string(name: 'ACTION', value: 'destroy')], wait: false
             }
       } 
+        stage('Parallel In Sequential'){
+            when{
+                expression{ params.ACTION == 'apply'}
+            }
+            parallel {
+                stage('Bastion'){
+                    steps{
+                       build job: '20-bastion', parameters: [string(name: 'ACTION', value: 'apply')], wait: false
+                        }
+                }
+                stage('EKS'){
+                    steps{
+                       build job: '40-eks', parameters: [string(name: 'ACTION', value: 'apply')], wait: false
+                        }
+                }
+                stage('ACM'){
+                    steps{
+                       build job: '70-acm', parameters: [string(name: 'ACTION', value: 'apply')], wait: false
+                        }
+                }
+                stage('ALB'){
+                    steps{
+                       build job: '60-ingress-alb', parameters: [string(name: 'ACTION', value: 'apply')], wait: false
+                        }
+                }
+                // stage('ECR'){
+                //     steps{
+                //        build job: '70-ecr', parameters: [string(name: 'ACTION', value: 'apply')], wait: false
+                //         }
+                }
+            }
+
+        }
+
     }
     post {
      always{
